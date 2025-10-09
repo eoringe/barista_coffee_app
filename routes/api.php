@@ -10,3 +10,4 @@ Route::get('/user', function (Request $request) {
 
 // Menu Items API Routes
 Route::post('/menu-items', [MenuItemController::class, 'store']);
+Route::match(['put','patch'], '/menu-items/{menuItem}', [MenuItemController::class, 'update']);
