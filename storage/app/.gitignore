@@ -1,3 +1,7 @@
 *
 !private/
+!public/
+!menu_images/
+!menu_images/** 
 !.gitignore
+
