@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <title>{{ config('app.name', 'Barista Admin') }}</title>
 
@@ -66,6 +67,7 @@
           color:inherit;
           border-radius: var(--radius);
           font-size:14px;
+          cursor:pointer;
         }
         .sidebar a.active {
           background: var(--primary);
@@ -179,6 +181,18 @@
     </head>
 
 <body>
+<!-- Loading Indicator -->
+<div id="loadingIndicator" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:none;align-items:center;justify-content:center;z-index:9999">
+  <div style="background:var(--card);padding:24px 32px;border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,0.2);text-align:center">
+    <div style="width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 12px"></div>
+    <p style="margin:0;font-weight:600;font-size:14px">Loading...</p>
+  </div>
+</div>
+<style>
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
 <div class="container">
     <aside class="sidebar">
         <h2 style="font-weight:700;margin:0 0 16px;font-size:18px">Barista Admin</h2>
@@ -208,30 +222,116 @@
    const $ = (s, r=document) => r.querySelector(s);
    const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
 
+   // Get CSRF token
+   const getCsrfToken = () => {
+     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+     console.log('[CSRF] Token:', token ? 'Found' : 'NOT FOUND');
+     return token;
+   };
+
    const api = {
      async list() {
-       const res = await fetch('/api/menu-items');
+       console.log('[API] Fetching menu items from /menu-items');
+       const res = await fetch('/menu-items', {
+         headers: {
+           'Accept': 'application/json',
+           'X-Requested-With': 'XMLHttpRequest'
+         }
+       });
        return res.json();
      },
      async create(fd) {
-       const res = await fetch('/api/menu-items', { method: 'POST', body: fd });
+       console.log('[API] Creating menu item via POST /menu-items');
+       const token = getCsrfToken();
+       const res = await fetch('/menu-items', {
+         method: 'POST',
+         headers: {
+           'X-CSRF-TOKEN': token,
+           'X-Requested-With': 'XMLHttpRequest',
+           'Accept': 'application/json'
+         },
+         body: fd
+       });
        return res.json();
      },
      async update(id, fd) {
-       const res = await fetch(`/api/menu-items/${id}`, { method: 'PATCH', body: fd });
+       console.log(`[API] Updating menu item ${id} via POST /menu-items/${id}`);
+       const token = getCsrfToken();
+       const res = await fetch(`/menu-items/${id}`, {
+         method: 'POST',
+         headers: {
+           'X-CSRF-TOKEN': token,
+           'X-Requested-With': 'XMLHttpRequest',
+           'Accept': 'application/json'
+         },
+         body: fd
+       });
        return res.json();
      },
      async remove(id) {
-       const res = await fetch(`/api/menu-items/${id}`, { method: 'DELETE' });
+       console.log(`[API] Deleting menu item ${id} via DELETE /menu-items/${id}`);
+       const token = getCsrfToken();
+       const res = await fetch(`/menu-items/${id}`, {
+         method: 'DELETE',
+         headers: {
+           'X-CSRF-TOKEN': token,
+           'X-Requested-With': 'XMLHttpRequest',
+           'Accept': 'application/json'
+         }
+       });
        return res.json();
      }
    };
 
   const catApi = {
-    async list() { const r = await fetch('/api/categories'); return r.json(); },
-    async create(name) { const fd = new FormData(); fd.append('name', name); const r = await fetch('/api/categories', { method:'POST', body: fd }); return r.json(); },
-    async update(id, name) { const fd = new FormData(); fd.append('name', name); const r = await fetch(`/api/categories/${id}`, { method:'PATCH', body: fd }); return r.json(); },
-    async remove(id) { const r = await fetch(`/api/categories/${id}`, { method:'DELETE' }); return r.json(); },
+    async list() {
+      const r = await fetch('/categories', {
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      return r.json();
+    },
+    async create(name) {
+      const fd = new FormData();
+      fd.append('name', name);
+      const token = getCsrfToken();
+      const r = await fetch('/categories', {
+        method:'POST',
+        headers: {
+          'X-CSRF-TOKEN': token,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        body: fd
+      });
+      return r.json();
+    },
+    async update(id, name) {
+      const fd = new FormData();
+      fd.append('name', name);
+      const token = getCsrfToken();
+      const r = await fetch(`/categories/${id}`, {
+        method:'POST',
+        headers: {
+          'X-CSRF-TOKEN': token,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        body: fd
+      });
+      return r.json();
+    },
+    async remove(id) {
+      const token = getCsrfToken();
+      const r = await fetch(`/categories/${id}`, {
+        method:'DELETE',
+        headers: {
+          'X-CSRF-TOKEN': token,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        }
+      });
+      return r.json();
+    },
   };
 
    function formatPrice(single, doubleP) {
@@ -260,6 +360,16 @@
         grid.appendChild(tpl.content.firstElementChild.cloneNode(true));
       }
     }
+  }
+
+  function showLoadingIndicator() {
+    const indicator = document.getElementById('loadingIndicator');
+    if (indicator) indicator.style.display = 'flex';
+  }
+
+  function hideLoadingIndicator() {
+    const indicator = document.getElementById('loadingIndicator');
+    if (indicator) indicator.style.display = 'none';
   }
 
   async function loadMenu() {
@@ -362,11 +472,11 @@
      err.style.display = 'none';
      form.reset();
      $('#menuId').value = '';
+     
      if (mode === 'edit' && item) {
        title.textContent = 'Edit Item';
        $('#menuId').value = item.id;
        $('#coffee_title').value = item.coffee_title || '';
-       $('#category').value = item.category?.name || '';
        $('#single_price').value = item.single_price ?? '';
        $('#double_price').value = item.double_price ?? '';
        $('#portion_available').value = item.portion_available ?? '';
@@ -374,11 +484,38 @@
      } else {
        title.textContent = 'Add Item';
      }
+     
+     // Show modal immediately
      wrap.classList.add('show');
+     
+     // Load categories in background and set selected value after
+     loadCategoryDropdown().then(() => {
+       if (mode === 'edit' && item) {
+         $('#category').value = item.category?.name || '';
+       }
+     });
    }
 
    function closeModal() {
      const wrap = $('#menuModal'); if (wrap) wrap.classList.remove('show');
+   }
+
+   async function loadCategoryDropdown() {
+     const select = $('#category');
+     if (!select) return;
+     try {
+       const res = await catApi.list();
+       const cats = Array.isArray(res?.data) ? res.data : [];
+       select.innerHTML = '<option value="">Select a category...</option>';
+       cats.forEach(cat => {
+         const option = document.createElement('option');
+         option.value = cat.name;
+         option.textContent = cat.name;
+         select.appendChild(option);
+       });
+     } catch (e) {
+       console.error('Failed to load categories:', e);
+     }
    }
 
    function toFormData(payload) {
@@ -389,31 +526,50 @@
 
    async function submitForm(e) {
      e.preventDefault();
+     console.log('========== FORM SUBMISSION STARTED ==========');
      const id = $('#menuId').value;
+     console.log('Menu Item ID:', id);
+     console.log('Is Update:', !!id);
     const saveBtn = e.submitter || document.querySelector('#menuForm button[type="submit"]');
     const original = saveBtn ? saveBtn.textContent : '';
     if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+    showLoadingIndicator();
      const payload = {
        coffee_title: $('#coffee_title').value,
        category: $('#category').value,
        single_price: $('#single_price').value,
        double_price: $('#double_price').value,
-       available: $('#available').checked,
+       available: $('#available').checked ? '1' : '0',  // Convert boolean to 1/0 for Laravel
        portion_available: $('#portion_available').value,
      };
+     console.log('Form payload:', payload);
      const file = $('#image').files && $('#image').files[0];
-     if (file) payload.image = file;
+     if (file) {
+       payload.image = file;
+       console.log('File attached:', file.name, file.size, 'bytes');
+     }
      const fd = toFormData(payload);
+     console.log('FormData entries:');
+     for (let [key, value] of fd.entries()) {
+       console.log(`  - ${key}:`, value);
+     }
      const err = $('#formError');
      try {
        const result = id ? await api.update(id, fd) : await api.create(fd);
+       console.log('API Response:', result);
        if (!result?.success) throw new Error(result?.message || 'Failed');
+       console.log('✓ Menu item saved successfully!');
+       console.log('========== FORM SUBMISSION COMPLETED ==========');
        closeModal();
        loadMenu();
      } catch (ex) {
+       console.error('========== FORM SUBMISSION ERROR ==========');
+       console.error('Error:', ex);
+       console.error('==========================================');
        err.textContent = ex?.message || 'Failed to save';
        err.style.display = 'block';
     } finally {
+      hideLoadingIndicator();
       if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = original || 'Save'; }
      }
    }
@@ -487,6 +643,7 @@
       statsSection.style.display = '';
       menuSection.style.display = '';
       categoriesSection.style.display = 'none';
+      loadMenu();
     });
 
     if (tab) tab.addEventListener('click', () => {
@@ -594,22 +751,22 @@
 
         <!-- Categories Panel -->
         <section class="card p-4" id="categoriesSection" style="display:none">
-            <div class="flex items-center justify-between" style="margin-bottom:12px">
+            <div class="flex items-center justify-between" style="margin-bottom:16px">
                 <h2 style="margin:0;font-weight:600">Categories</h2>
                 <div class="flex gap-2">
-                    <input id="newCategoryName" class="input" placeholder="New category name" />
+                    <input id="newCategoryName" class="input" placeholder="New category name" style="max-width:200px" />
                     <button id="addCategoryBtn" class="btn">Add</button>
                 </div>
             </div>
-            <div id="categoriesList" class="grid" style="grid-template-columns:1fr"></div>
+            <div id="categoriesList" style="display:flex;flex-direction:column;gap:8px"></div>
             <template id="categoryItemTemplate">
-                <div class="flex items-center justify-between card p-4">
-                    <div class="flex items-center gap-2">
-                        <input data-edit-name class="input" style="min-width:220px" />
+                <div class="flex items-center justify-between card" style="padding:12px 16px">
+                    <div class="flex items-center gap-2" style="flex:1">
+                        <input data-edit-name class="input" style="flex:1;max-width:300px" />
                     </div>
                     <div class="flex items-center gap-2">
-                        <button data-save class="btn">Save</button>
-                        <button data-delete style="background:#e73f3f;color:#fff;border:none;padding:10px 14px;border-radius:var(--radius);cursor:pointer">Delete</button>
+                        <button data-save class="btn" style="padding:8px 16px;font-size:13px">Save</button>
+                        <button data-delete style="background:#e73f3f;color:#fff;border:none;padding:8px 16px;border-radius:var(--radius);cursor:pointer;font-size:13px">Delete</button>
                     </div>
                 </div>
             </template>
@@ -625,38 +782,40 @@
             <button id="closeModalBtn" class="input" style="cursor:pointer">Close</button>
         </div>
         <form id="menuForm" class="p-4" enctype="multipart/form-data" style="display:grid;gap:12px">
-            <input type="hidden" id="menuId" />
+            <input type="hidden" id="menuId" name="menuId" />
             <div>
                 <label style="font-size:14px;margin-bottom:4px;display:block">Coffee Title</label>
-                <input id="coffee_title" required class="input" placeholder="Espresso" />
+                <input id="coffee_title" name="coffee_title" required class="input" placeholder="Espresso" />
             </div>
             <div>
                 <label style="font-size:14px;margin-bottom:4px;display:block">Category</label>
-                <input id="category" required class="input" placeholder="Hot Coffee" />
+                <select id="category" name="category" required class="input" style="width:100%">
+                    <option value="">Select a category...</option>
+                </select>
             </div>
             <div class="flex gap-3" style="flex-wrap:wrap">
                 <div style="flex:1 1 160px">
                     <label style="font-size:14px;margin-bottom:4px;display:block">Single Price (cents)</label>
-                    <input id="single_price" type="number" min="0" required class="input">
+                    <input id="single_price" name="single_price" type="number" min="0" required class="input">
                 </div>
                 <div style="flex:1 1 160px">
                     <label style="font-size:14px;margin-bottom:4px;display:block">Double Price (cents)</label>
-                    <input id="double_price" type="number" min="0" required class="input">
+                    <input id="double_price" name="double_price" type="number" min="0" required class="input">
                 </div>
             </div>
             <div class="flex gap-3" style="flex-wrap:wrap">
                 <div style="flex:1 1 160px">
                     <label style="font-size:14px;margin-bottom:4px;display:block">Portions Available</label>
-                    <input id="portion_available" type="number" min="0" required class="input">
+                    <input id="portion_available" name="portion_available" type="number" min="0" required class="input">
                 </div>
                 <label class="flex items-center gap-2" style="margin-top:28px;font-size:14px">
-                    <input id="available" type="checkbox" checked>
+                    <input id="available" name="available" type="checkbox" checked>
                     Available
                 </label>
             </div>
             <div>
                 <label style="font-size:14px;margin-bottom:4px;display:block">Image</label>
-                <input id="image" type="file" accept="image/*" />
+                <input id="image" name="image" type="file" accept="image/*" />
             </div>
 
             <div class="flex items-center justify-end gap-2">

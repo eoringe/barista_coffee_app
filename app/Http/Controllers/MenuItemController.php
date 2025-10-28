@@ -87,73 +87,83 @@ class MenuItemController extends Controller
     }
 
     /**
-     * Update an existing menu item (partial updates supported).
+     * Update an existing menu item using POST request.
      */
     public function update(Request $request, MenuItem $menuItem): JsonResponse
     {
-        $validated = $request->validate([
-            'coffee_title' => 'sometimes|string|max:255',
-            'category' => 'sometimes|string|max:255',
-            'category_id' => 'sometimes|integer|exists:categories,id',
-            'single_price' => 'sometimes|integer|min:0',
-            'double_price' => 'sometimes|integer|min:0',
-            'available' => 'sometimes|boolean',
-            'portion_available' => 'sometimes|integer|min:0',
-            'image' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ]);
-
+        Log::info('========== UPDATE MENU ITEM STARTED ==========');
+        Log::info('Request Method: ' . $request->method());
+        Log::info('Request URL: ' . $request->fullUrl());
+        Log::info('Menu Item ID: ' . $menuItem->id);
+        Log::info('All Request Data:', $request->all());
+        Log::info('Request Headers:', $request->headers->all());
+        Log::info('Has File (image): ' . ($request->hasFile('image') ? 'YES' : 'NO'));
+        
         try {
-            Log::info('MenuItem update called', [
-                'menu_item_id' => $menuItem->id,
-                'inputs' => $request->all(),
-                'has_file_image' => $request->hasFile('image'),
+            Log::info('Starting validation...');
+            
+            // Validate the request
+            $validated = $request->validate([
+                'coffee_title' => 'required|string|max:255',
+                'category' => 'required|string|max:255',
+                'single_price' => 'required|integer|min:0',
+                'double_price' => 'required|integer|min:0',
+                'available' => 'boolean',
+                'portion_available' => 'required|integer|min:0',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
-            // Update or relink category if provided
-            if (array_key_exists('category', $validated)) {
-                $category = Category::firstOrCreate([
-                    'name' => $validated['category'],
-                ], [
-                    'name' => $validated['category'],
-                ]);
-                $menuItem->category_id = $category->id;
-            } elseif (array_key_exists('category_id', $validated)) {
-                $menuItem->category_id = (int) $validated['category_id'];
-            }
 
-            // Replace image if provided
+            Log::info('Validation passed. Validated data:', $validated);
+
+            // Handle category
+            Log::info('Finding or creating category: ' . $validated['category']);
+            $category = Category::firstOrCreate(
+                ['name' => $validated['category']],
+                ['name' => $validated['category']]
+            );
+            Log::info('Category ID: ' . $category->id);
+
+            // Handle image upload if provided
+            $imagePath = $menuItem->image_path; // Keep existing image by default
             if ($request->hasFile('image')) {
+                Log::info('New image uploaded, processing...');
+                
                 // Delete old image if exists
                 if ($menuItem->image_path) {
+                    Log::info('Deleting old image: ' . $menuItem->image_path);
                     Storage::disk('public')->delete($menuItem->image_path);
                 }
-
-                $baseTitle = $validated['coffee_title'] ?? $menuItem->coffee_title;
+                
+                $baseTitle = $validated['coffee_title'];
                 $image = $request->file('image');
                 $imageName = Str::slug($baseTitle) . '_' . time() . '.' . $image->getClientOriginalExtension();
-                $menuItem->image_path = $image->storeAs('menu_images', $imageName, 'public');
+                $imagePath = $image->storeAs('menu_images', $imageName, 'public');
+                
+                Log::info('New image saved: ' . $imagePath);
+            } else {
+                Log::info('No new image uploaded, keeping existing: ' . ($imagePath ?? 'none'));
             }
 
-            // Explicitly assign scalar fields with coercion from form-data
-            if (array_key_exists('coffee_title', $validated)) {
-                $menuItem->coffee_title = $validated['coffee_title'];
-            }
-            if (array_key_exists('single_price', $validated)) {
-                $menuItem->single_price = (int) $validated['single_price'];
-            }
-            if (array_key_exists('double_price', $validated)) {
-                $menuItem->double_price = (int) $validated['double_price'];
-            }
-            if ($request->has('available')) {
-                $bool = filter_var($request->input('available'), FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-                $menuItem->available = $bool === null ? (bool) $request->input('available') : $bool;
-            }
-            if (array_key_exists('portion_available', $validated)) {
-                $menuItem->portion_available = (int) $validated['portion_available'];
-            }
+            // Prepare data for update
+            $updateData = [
+                'coffee_title' => $validated['coffee_title'],
+                'category_id' => $category->id,
+                'single_price' => (int) $validated['single_price'],
+                'double_price' => (int) $validated['double_price'],
+                'available' => isset($validated['available']) ? (bool) $validated['available'] : true,
+                'portion_available' => (int) $validated['portion_available'],
+                'image_path' => $imagePath,
+            ];
 
-            $menuItem->save();
-
+            Log::info('Update data prepared:', $updateData);
+            
+            // Update the menu item
+            $menuItem->update($updateData);
             $menuItem->load('category');
+
+            Log::info('Menu item updated successfully');
+            Log::info('Updated menu item data:', $menuItem->toArray());
+            Log::info('========== UPDATE MENU ITEM COMPLETED ==========');
 
             return response()->json([
                 'success' => true,
@@ -161,10 +171,28 @@ class MenuItemController extends Controller
                 'data' => $menuItem,
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('========== VALIDATION ERROR ==========');
+            Log::error('Validation errors:', $e->errors());
+            Log::error('========================================');
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update menu item',
+                'message' => 'Validation failed',
+                'errors' => $e->errors(),
+            ], 422);
+            
+        } catch (\Exception $e) {
+            Log::error('========== UPDATE ERROR ==========');
+            Log::error('Error message: ' . $e->getMessage());
+            Log::error('Error file: ' . $e->getFile());
+            Log::error('Error line: ' . $e->getLine());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('===================================');
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update menu item: ' . $e->getMessage(),
                 'error' => $e->getMessage(),
             ], 500);
         }
