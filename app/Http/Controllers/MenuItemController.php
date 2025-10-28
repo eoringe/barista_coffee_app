@@ -8,9 +8,24 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class MenuItemController extends Controller
 {
+    /**
+     * Display a listing of the menu items.
+     */
+    public function index(): JsonResponse
+    {
+        $items = MenuItem::with('category')->orderByDesc('created_at')->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Menu items fetched successfully',
+            'data' => $items,
+        ]);
+    }
+
     /**
      * Store a newly created menu item in storage.
      */
@@ -79,6 +94,7 @@ class MenuItemController extends Controller
         $validated = $request->validate([
             'coffee_title' => 'sometimes|string|max:255',
             'category' => 'sometimes|string|max:255',
+            'category_id' => 'sometimes|integer|exists:categories,id',
             'single_price' => 'sometimes|integer|min:0',
             'double_price' => 'sometimes|integer|min:0',
             'available' => 'sometimes|boolean',
@@ -87,6 +103,11 @@ class MenuItemController extends Controller
         ]);
 
         try {
+            Log::info('MenuItem update called', [
+                'menu_item_id' => $menuItem->id,
+                'inputs' => $request->all(),
+                'has_file_image' => $request->hasFile('image'),
+            ]);
             // Update or relink category if provided
             if (array_key_exists('category', $validated)) {
                 $category = Category::firstOrCreate([
@@ -95,6 +116,8 @@ class MenuItemController extends Controller
                     'name' => $validated['category'],
                 ]);
                 $menuItem->category_id = $category->id;
+            } elseif (array_key_exists('category_id', $validated)) {
+                $menuItem->category_id = (int) $validated['category_id'];
             }
 
             // Replace image if provided
@@ -128,14 +151,6 @@ class MenuItemController extends Controller
                 $menuItem->portion_available = (int) $validated['portion_available'];
             }
 
-            // If no updatable fields were provided at all, return 422
-            $providedAny = $request->hasAny(['coffee_title','single_price','double_price','available','portion_available','category']) || $request->hasFile('image');
-            if (!$providedAny) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No valid fields provided',
-                ], 422);
-            }
             $menuItem->save();
 
             $menuItem->load('category');
@@ -150,6 +165,31 @@ class MenuItemController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update menu item',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove the specified menu item from storage.
+     */
+    public function destroy(MenuItem $menuItem): JsonResponse
+    {
+        try {
+            if ($menuItem->image_path) {
+                Storage::disk('public')->delete($menuItem->image_path);
+            }
+
+            $menuItem->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Menu item deleted successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete menu item',
                 'error' => $e->getMessage(),
             ], 500);
         }
