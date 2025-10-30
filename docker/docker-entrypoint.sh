@@ -25,12 +25,23 @@ if [ "$1" = "${DEFAULT_COMMAND[0]}" ] && [ "$2" = "${DEFAULT_COMMAND[1]}" ]; the
         php artisan key:generate --force
     fi
 
-    # Ensure database file exists for SQLite
-    if [ ! -f /var/www/html/database/database.sqlite ]; then
-        echo "Creating SQLite database file..."
-        touch /var/www/html/database/database.sqlite
-        chown www-data:www-data /var/www/html/database/database.sqlite
-    fi
+    # Set proper permissions
+    echo "Setting permissions..."
+    chown -R www-data:www-data /var/www/html/storage
+    chown -R www-data:www-data /var/www/html/bootstrap/cache
+    chmod -R 775 /var/www/html/storage
+    chmod -R 775 /var/www/html/bootstrap/cache
+
+    # Ensure Apache can write to storage
+    chmod -R 775 /var/www/html/storage/logs/
+    chmod -R 775 /var/www/html/storage/framework/
+
+    # Wait for PostgreSQL to be ready
+    echo "Waiting for PostgreSQL to be ready..."
+    until PGPASSWORD=$DB_PASSWORD psql -h "$DB_HOST" -U "$DB_USERNAME" -d "$DB_DATABASE" -c '\q' >/dev/null 2>&1; do
+        echo "Waiting for database connection..."
+        sleep 1
+    done
 
     # Run migrations
     echo "Running database migrations..."
@@ -42,17 +53,10 @@ if [ "$1" = "${DEFAULT_COMMAND[0]}" ] && [ "$2" = "${DEFAULT_COMMAND[1]}" ]; the
     php artisan route:cache
     php artisan view:cache
 
-    # Set proper permissions
-    echo "Setting permissions..."
-    chown -R www-data:www-data /var/www/html/storage
-    chown -R www-data:www-data /var/www/html/bootstrap/cache
-    chown -R www-data:www-data /var/www/html/database
-    chmod -R 755 /var/www/html/storage
-    chmod -R 755 /var/www/html/bootstrap/cache
-
-    # Ensure Apache can write to storage
-    chmod -R 775 /var/www/html/storage/logs/
-    chmod -R 775 /var/www/html/storage/framework/
+    # Create storage link if it doesn't exist
+    if [ ! -L public/storage ]; then
+        php artisan storage:link
+    fi
 
     echo "Setup complete! Starting services..."
 fi

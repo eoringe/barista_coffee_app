@@ -11,12 +11,14 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     libicu-dev \
     libonig-dev \
+    libpq-dev \
+    postgresql-client \
     zip \
     unzip \
     supervisor \
     gnupg \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) gd pdo pdo_mysql intl zip exif pcntl bcmath
+    && docker-php-ext-install -j$(nproc) gd pdo pdo_pgsql pgsql intl zip exif pcntl bcmath
 
 # Install Node.js
 RUN mkdir -p /etc/apt/keyrings && \
