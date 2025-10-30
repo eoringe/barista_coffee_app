@@ -1,23 +1,32 @@
-# Multi-stage build for Laravel application
-FROM php:8.2-fpm-alpine AS base
+# Use official PHP image with Apache
+FROM php:8.2-apache
 
-# Install system dependencies
-RUN apk add --no-cache \
+# Install system dependencies and PHP extensions
+RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
     libzip-dev \
+    libicu-dev \
     zip \
     unzip \
-    nginx \
     supervisor \
-    nodejs \
-    npm \
-    sqlite \
-    oniguruma-dev \
-    freetype-dev \
-    libjpeg-turbo-dev \
-    libpng \
+    gnupg \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd pdo pdo_mysql intl zip exif pcntl bcmath
+
+# Install Node.js
+RUN mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && \
+    apt-get install -y nodejs && \
+    npm install -g npm@latest
+
+# Enable Apache modules
+RUN a2enmod rewrite headers \
     libjpeg-turbo \
     freetype
 
@@ -57,9 +66,8 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
-# Copy nginx configuration
-COPY docker/nginx.conf /etc/nginx/nginx.conf
-COPY docker/default.conf /etc/nginx/http.d/default.conf
+# Configure Apache
+COPY docker/apache.conf /etc/apache2/sites-available/000-default.conf
 
 # Copy supervisor configuration
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -74,7 +82,7 @@ RUN mkdir -p /var/www/html/database && \
     chown -R www-data:www-data /var/www/html/database
 
 # Expose port
-EXPOSE 8080
+EXPOSE 80
 
 # Start services
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

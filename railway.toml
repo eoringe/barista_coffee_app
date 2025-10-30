@@ -8,3 +8,12 @@ healthcheckPath = "/"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+
+[[services]]
+port = 80
+protocol = "tcp"
+
+type = "web"
+
+[http]
+verify_origin = false
