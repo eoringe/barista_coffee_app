@@ -14,10 +14,16 @@ RUN apk add --no-cache \
     nodejs \
     npm \
     sqlite \
-    oniguruma-dev
+    oniguruma-dev \
+    freetype-dev \
+    libjpeg-turbo-dev \
+    libpng \
+    libjpeg-turbo \
+    freetype
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip
+# Install PHP extensions with parallel compilation
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) pdo pdo_mysql mbstring exif pcntl bcmath gd zip
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -28,14 +34,14 @@ WORKDIR /var/www/html
 # Copy composer files
 COPY composer.json composer.lock ./
 
-# Install PHP dependencies
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist
+# Install PHP dependencies with optimizations
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --optimize-autoloader --no-interaction
 
 # Copy package files
 COPY package.json package-lock.json ./
 
 # Install Node dependencies
-RUN npm ci
+RUN npm ci --prefer-offline --no-audit
 
 # Copy application files
 COPY . .
