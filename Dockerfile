@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libzip-dev \
     libicu-dev \
+    libonig-dev \
     zip \
     unzip \
     supervisor \
