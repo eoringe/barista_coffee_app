@@ -39,10 +39,22 @@ if [ "$1" = "${DEFAULT_COMMAND[0]}" ] && [ "$2" = "${DEFAULT_COMMAND[1]}" ]; the
     # Wait for PostgreSQL to be ready with environment variables
     echo "Waiting for PostgreSQL to be ready..."
     echo "DB Connection: postgresql://${DB_USERNAME}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}"
+    
+    # Export environment variables for the current session
+    export DB_CONNECTION=${DB_CONNECTION}
+    export DB_HOST=${DB_HOST}
+    export DB_PORT=${DB_PORT}
+    export DB_DATABASE=${DB_DATABASE}
+    export DB_USERNAME=${DB_USERNAME}
+    export DB_PASSWORD=${DB_PASSWORD}
+    
+    # Test the database connection
     until PGPASSWORD="${DB_PASSWORD}" psql -h "${DB_HOST}" -U "${DB_USERNAME}" -d "${DB_DATABASE}" -p "${DB_PORT}" -c '\q' >/dev/null 2>&1; do
         echo "Waiting for database connection..."
         sleep 1
     done
+    
+    echo "Database connection successful!"
 
     # Run migrations
     echo "Running database migrations..."
