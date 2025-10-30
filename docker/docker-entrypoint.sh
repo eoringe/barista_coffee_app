@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 # Start with a default command
@@ -36,9 +36,10 @@ if [ "$1" = "${DEFAULT_COMMAND[0]}" ] && [ "$2" = "${DEFAULT_COMMAND[1]}" ]; the
     chmod -R 775 /var/www/html/storage/logs/
     chmod -R 775 /var/www/html/storage/framework/
 
-    # Wait for PostgreSQL to be ready
+    # Wait for PostgreSQL to be ready with environment variables
     echo "Waiting for PostgreSQL to be ready..."
-    until PGPASSWORD=$DB_PASSWORD psql -h "$DB_HOST" -U "$DB_USERNAME" -d "$DB_DATABASE" -c '\q' >/dev/null 2>&1; do
+    echo "DB Connection: postgresql://${DB_USERNAME}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}"
+    until PGPASSWORD="${DB_PASSWORD}" psql -h "${DB_HOST}" -U "${DB_USERNAME}" -d "${DB_DATABASE}" -p "${DB_PORT}" -c '\q' >/dev/null 2>&1; do
         echo "Waiting for database connection..."
         sleep 1
     done
