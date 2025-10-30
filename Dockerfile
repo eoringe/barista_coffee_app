@@ -1,56 +1,69 @@
-#!/bin/bash
-set -e
+# Use official PHP image with Apache
+FROM php:8.2-apache
 
-DEFAULT_COMMAND=("/usr/bin/supervisord" "-c" "/etc/supervisor/conf.d/supervisord.conf")
+# Install system dependencies and PHP extensions
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libzip-dev \
+    libicu-dev \
+    libonig-dev \
+    libpq-dev \
+    postgresql-client \
+    zip \
+    unzip \
+    supervisor \
+    gnupg && \
+    docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install -j$(nproc) gd pdo pdo_pgsql pgsql intl zip exif pcntl bcmath
 
-if [ "$#" -eq 0 ]; then
-    set -- "${DEFAULT_COMMAND[@]}"
+# Enable Apache modules
+RUN a2enmod rewrite headers
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy only composer files first (for caching)
+COPY composer.json composer.lock ./
+
+# Install PHP dependencies (no config cache yet)
+RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts --no-progress
+
+# Copy the rest of the application
+COPY . .
+
+# Build frontend assets if present
+RUN if [ -f package.json ]; then \
+    apt-get install -y nodejs npm && \
+    npm install && \
+    npm run build; \
 fi
 
-if [ "$1" = "${DEFAULT_COMMAND[0]}" ] && [ "$2" = "${DEFAULT_COMMAND[1]}" ]; then
-    echo "🚀 Starting Laravel setup..."
-
-    # If .env doesn't exist, copy example
-    if [ ! -f .env ]; then
-        echo "Creating .env file from .env.example..."
-        cp .env.example .env
-    fi
-
-    # Ensure APP_KEY exists
-    if ! grep -q "APP_KEY=base64:" .env; then
-        echo "Generating Laravel app key..."
-        php artisan key:generate --force
-    fi
-
-    echo "Setting permissions..."
-    chown -R www-data:www-data storage bootstrap/cache
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html && \
     chmod -R 775 storage bootstrap/cache
 
-    echo "⏳ Waiting for PostgreSQL to be ready..."
-    until PGPASSWORD="${DB_PASSWORD}" psql -h "${DB_HOST}" -U "${DB_USERNAME}" -d "${DB_DATABASE}" -p "${DB_PORT}" -c '\q' >/dev/null 2>&1; do
-        echo "Waiting for database connection..."
-        sleep 2
-    done
-    echo "✅ Database connection established!"
+# Copy Apache and Supervisor configuration
+COPY docker/apache.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-    echo "Running migrations..."
-    php artisan migrate --force || echo "⚠️ Migration skipped (possible fresh DB)."
+# Copy entrypoint script
+COPY docker/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-    echo "Clearing and caching config..."
-    php artisan config:clear
-    php artisan cache:clear
-    php artisan route:clear
-    php artisan view:clear
-    php artisan config:cache
-    php artisan route:cache
-    php artisan view:cache
+# Expose port
+EXPOSE 80
 
-    # Create storage link if missing
-    if [ ! -L public/storage ]; then
-        php artisan storage:link || true
-    fi
+# Clear config cache (so Laravel reads Railway env vars)
+RUN php artisan config:clear || true && \
+    php artisan cache:clear || true
 
-    echo "✅ Laravel setup complete. Starting services..."
-fi
-
-exec "$@"
+# Use the entrypoint
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
