@@ -26,9 +26,7 @@ RUN mkdir -p /etc/apt/keyrings && \
     npm install -g npm@latest
 
 # Enable Apache modules
-RUN a2enmod rewrite headers \
-    libjpeg-turbo \
-    freetype
+RUN a2enmod rewrite headers
 
 # Install PHP extensions with parallel compilation
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
