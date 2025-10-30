@@ -1,6 +1,6 @@
 # Railway Deployment Guide
 
-This guide explains how to deploy your Laravel Barista Coffee App to Railway using Docker.
+This guide explains how to deploy your Laravel Barista Coffee App to Railway.
 
 ## Prerequisites
 
@@ -11,11 +11,11 @@ This guide explains how to deploy your Laravel Barista Coffee App to Railway usi
 
 ### 1. Push Your Code to Git
 
-Make sure all your code, including the Docker files, is committed and pushed to your Git repository:
+Make sure all your code is committed and pushed to your Git repository:
 
 ```bash
 git add .
-git commit -m "Add Docker configuration for Railway deployment"
+git commit -m "Update for Railway deployment"
 git push origin main
 ```
 
@@ -25,7 +25,7 @@ git push origin main
 2. Click "New Project"
 3. Select "Deploy from GitHub repo"
 4. Choose your repository
-5. Railway will automatically detect the Dockerfile and start building
+5. Railway will detect your PHP application and set it up
 
 ### 3. Configure Environment Variables
 
@@ -77,19 +77,9 @@ Once deployed, Railway will provide you with a URL like:
 https://your-app-name.up.railway.app
 ```
 
-## Docker Configuration Overview
+## Deployment Configuration
 
-### Files Created
-
-- **Dockerfile**: Multi-stage build configuration for Laravel
-- **.dockerignore**: Excludes unnecessary files from the Docker image
-- **docker/docker-entrypoint.sh**: Initialization script that runs migrations and setup
-- **docker/nginx.conf**: Nginx web server configuration
-- **docker/default.conf**: Laravel-specific Nginx site configuration
-- **docker/supervisord.conf**: Process manager configuration for PHP-FPM, Nginx, and Queue workers
-- **railway.toml**: Railway-specific deployment configuration
-
-### What Happens During Build
+### What Happens During Deployment
 
 1. Installs PHP 8.2 with required extensions
 2. Installs Composer and Node.js
@@ -110,17 +100,17 @@ https://your-app-name.up.railway.app
 
 ## Troubleshooting
 
-### Build Fails
+### Common Issues
+
+#### Build Failures
 
 - Check the Railway build logs for specific errors
 - Ensure all dependencies in `composer.json` and `package.json` are correct
-- Verify that the Dockerfile syntax is correct
 
 ### Application Not Starting
 
 - Check the deployment logs in Railway dashboard
 - Verify environment variables are set correctly
-- Ensure `APP_KEY` is generated (check logs for "Generating application key...")
 
 ### Database Errors
 
@@ -154,17 +144,13 @@ Railway automatically handles scaling. For better performance:
 
 ## Local Testing
 
-To test the Docker setup locally:
+To test the application locally, follow the standard Laravel development setup:
 
-```bash
-# Build the image
-docker build -t barista-coffee-app .
-
-# Run the container
-docker run -p 8080:8080 barista-coffee-app
-
-# Access at http://localhost:8080
-```
+1. Install PHP and Composer
+2. Run `composer install`
+3. Set up your `.env` file
+4. Run `php artisan serve`
+5. Access at http://localhost:8000
 
 ## Support
 
