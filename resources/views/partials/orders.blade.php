@@ -1,12 +1,15 @@
 <section class="card p-4" id="ordersSection" style="display:none">
   <div class="flex items-center justify-between" style="margin-bottom:16px">
     <h2 style="margin:0;font-weight:600">Orders</h2>
-    <div class="text-muted">Live queue</div>
+    <div class="flex items-center gap-2">
+      <span id="ordersNewBadge" class="orders-badge" style="display:none">New orders</span>
+      <button id="ordersRefreshBtn" class="btn" title="Refresh">Refresh</button>
+    </div>
   </div>
   <div id="ordersList" class="orders-list"></div>
 
   <template id="orderItemTemplate">
-    <div class="order-card">
+    <div class="order-card" data-key>
       <div class="order-left">
         <div class="order-title">
           <span class="title" data-item></span>

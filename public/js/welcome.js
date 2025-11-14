@@ -66,6 +66,119 @@
     });
   }
 
+  // Polling management
+  let ordersPollTimer = null;
+  function startOrdersPolling(){
+    stopOrdersPolling();
+    // initial load
+    loadOrdersLive();
+    const tick = async ()=>{
+      if(document.hidden) { ordersPollTimer = setTimeout(tick, ordersPollIntervalMs); return; }
+      await loadOrdersLive();
+      ordersPollTimer = setTimeout(tick, ordersPollIntervalMs);
+    };
+    ordersPollTimer = setTimeout(tick, ordersPollIntervalMs);
+  }
+  function stopOrdersPolling(){ if(ordersPollTimer){ clearTimeout(ordersPollTimer); ordersPollTimer = null; } }
+
+  // Non-disruptive incremental update
+  let ordersUserActive = false; // when true, skip auto DOM updates
+  let ordersPollIntervalMs = 7000; // adaptive polling interval
+  function hydrateOrderNode(node, o){
+    node.querySelector('[data-item]').textContent = o.item;
+    node.querySelector('[data-price]').textContent = o.price;
+    node.querySelector('[data-size]').textContent = o.size;
+    node.querySelector('[data-qty]').textContent = `Qty: ${o.qty}`;
+    node.querySelector('[data-receipt]').textContent = `Receipt: ${o.receipt_number}`;
+    const btn = node.querySelector('[data-ready]');
+    btn.onclick = () => alert(`Order ${o.receipt_number} marked as ready!`);
+    node.setAttribute('data-key', `${o.order_id}:${o.item}:${o.size}`);
+    return node;
+  }
+
+  function ordersIsUserActive(){
+    if(ordersUserActive) return true;
+    const ordersSection = document.getElementById('ordersSection');
+    if(!ordersSection) return false;
+    const focused = document.activeElement && ordersSection.contains(document.activeElement);
+    return focused;
+  }
+
+  async function loadOrdersLive(){
+    const list = document.getElementById('ordersList');
+    const tpl = document.getElementById('orderItemTemplate');
+    const badge = document.getElementById('ordersNewBadge');
+    if(!list || !tpl) return;
+    try{
+      const res = await fetch('/orders', { headers: { 'Accept':'application/json','X-Requested-With':'XMLHttpRequest' } });
+      const data = await res.json();
+      if(!data?.success){ throw new Error(data?.message || 'Failed to load orders'); }
+      const rows = Array.isArray(data.data) ? data.data : [];
+
+      // If user is interacting, we still append fresh leading items with scroll compensation
+      const userActive = ordersIsUserActive();
+
+      // Build a map of desired keys
+      const desired = new Map();
+      rows.forEach(o => desired.set(`${o.order_id}:${o.item}:${o.size}`, o));
+
+      // Build a map of existing nodes
+      const currentNodes = Array.from(list.children).filter(el => el.matches('.order-card'));
+      const existing = new Map(currentNodes.map(n => [n.getAttribute('data-key'), n]));
+
+      // Preserve scroll position baseline
+      const prevScroll = list.scrollTop;
+
+      // Insert/update nodes in-place to avoid full re-render
+      rows.forEach((o, index) => {
+        const key = `${o.order_id}:${o.item}:${o.size}`;
+        let node = existing.get(key);
+        if(!node){
+          node = tpl.content.firstElementChild.cloneNode(true);
+          hydrateOrderNode(node, o);
+          const ref = list.children[index] || null;
+          list.insertBefore(node, ref);
+        } else {
+          hydrateOrderNode(node, o);
+          const currentIndex = Array.prototype.indexOf.call(list.children, node);
+          if(currentIndex !== index){
+            // Avoid heavy reordering while user is active; only reorder if not active
+            if(!userActive){
+              const ref = list.children[index] || null;
+              list.insertBefore(node, ref);
+            }
+          }
+        }
+      });
+
+      // Remove any extra nodes not in desired (skip while active to avoid disruption)
+      if(!userActive){
+        Array.from(list.children).forEach(n => {
+          if(n.matches('.order-card')){
+            const k = n.getAttribute('data-key');
+            if(!desired.has(k)) n.remove();
+          }
+        });
+      } else {
+        if(badge) badge.style.display = '';
+      }
+
+      // Restore scroll position (only if user not active)
+      if(!userActive) list.scrollTop = prevScroll;
+      if(badge) badge.style.display = 'none';
+      // success => reset polling interval to base
+      ordersPollIntervalMs = 7000;
+    } catch(e){
+      console.error('Failed to load live orders:', e);
+      // don't blow away current UI; show error subtly
+      if(list && !list.querySelector('[data-orders-error]')){
+        const p = document.createElement('p'); p.dataset.ordersError='1'; p.className='text-sm'; p.style.color='#e73f3f'; p.textContent='Failed to load orders.'; list.appendChild(p);
+      }
+      // backoff on errors up to 20s
+      ordersPollIntervalMs = Math.min(20000, Math.round(ordersPollIntervalMs * 1.5));
+    } finally { hideLoadingIndicator(); }
+  }
+
   document.addEventListener('DOMContentLoaded',()=>{
     loadMenu();
     const openBtn=document.getElementById('openCreateModalBtn');
@@ -141,11 +254,49 @@
     viewGridBtn?.addEventListener('click', ()=> setView('grid'));
     viewListBtn?.addEventListener('click', ()=> setView('list'));
 
+    // WebSocket: subscribe to orders channel if Echo is available
+    try{
+      if(window.Echo){
+        let wsConnected = false;
+        const channel = window.Echo.channel('orders');
+        channel.listen('OrderPaidUpdated', () => {
+          // Only refresh when Orders tab is visible
+          if(ordersSection && ordersSection.style.display !== 'none'){
+            loadOrdersLive();
+          }
+        });
+        // Basic connection state hooks (Pusher-compatible)
+        const pusher = window.Echo.connector.pusher;
+        if(pusher && pusher.connection){
+          pusher.connection.bind('connected', ()=>{ wsConnected = true; stopOrdersPolling(); });
+          pusher.connection.bind('disconnected', ()=>{ wsConnected = false; if(ordersSection && ordersSection.style.display !== 'none') startOrdersPolling(); });
+          pusher.connection.bind('unavailable', ()=>{ wsConnected = false; if(ordersSection && ordersSection.style.display !== 'none') startOrdersPolling(); });
+        }
+        console.log('[Echo] Subscribed to orders channel');
+      }
+    }catch(e){ console.warn('[Echo] Subscription failed:', e); }
+
     function setActive(tabEl){ [tabMenu,tab,specialsTab].forEach(el=>{ if(!el) return; el.classList.remove('active'); }); if(tabEl) tabEl.classList.add('active'); }
 
     if(tabMenu) tabMenu.addEventListener('click',()=>{ setActive(tabMenu); menuHeader.style.display=''; statsSection.style.display=''; menuSection.style.display=''; categoriesSection.style.display='none'; specialsSection.style.display='none'; if(ordersSection) ordersSection.style.display='none'; loadMenu(); });
     if(specialsTab) specialsTab.addEventListener('click',()=>{ setActive(specialsTab); menuHeader.style.display='none'; statsSection.style.display='none'; menuSection.style.display='none'; categoriesSection.style.display='none'; if(ordersSection) ordersSection.style.display='none'; specialsSection.style.display=''; showLoadingIndicator(); loadSpecials(); });
-    if(ordersTab) ordersTab.addEventListener('click',()=>{ setActive(ordersTab); menuHeader.style.display='none'; statsSection.style.display='none'; menuSection.style.display='none'; categoriesSection.style.display='none'; specialsSection.style.display='none'; if(ordersSection) { ordersSection.style.display=''; showLoadingIndicator(); setTimeout(()=>{ renderOrders(); hideLoadingIndicator(); }, 300); } });
+    if(ordersTab) ordersTab.addEventListener('click',()=>{ setActive(ordersTab); menuHeader.style.display='none'; statsSection.style.display='none'; menuSection.style.display='none'; categoriesSection.style.display='none'; specialsSection.style.display='none'; if(ordersSection) { ordersSection.style.display=''; showLoadingIndicator(); startOrdersPolling(); } });
+    // Pause updates while user is interacting with orders (scrolling or hovering)
+    const ordersListEl = document.getElementById('ordersList');
+    if(ordersListEl){
+      let hoverTimer = null;
+      ordersListEl.addEventListener('mouseenter', ()=>{ ordersUserActive = true; });
+      ordersListEl.addEventListener('mouseleave', ()=>{ hoverTimer && clearTimeout(hoverTimer); hoverTimer = setTimeout(()=>{ ordersUserActive=false; }, 600); });
+      ordersListEl.addEventListener('scroll', ()=>{ ordersUserActive = true; clearTimeout(hoverTimer); hoverTimer = setTimeout(()=>{ ordersUserActive=false; }, 800); }, { passive:true });
+    }
+    // Manual refresh
+    const manualBtn = document.getElementById('ordersRefreshBtn');
+    const badge = document.getElementById('ordersNewBadge');
+    if(manualBtn) manualBtn.addEventListener('click', ()=>{ if(badge) badge.style.display='none'; loadOrdersLive(); });
+    // stop polling when leaving orders
+    if(tabMenu) tabMenu.addEventListener('click', stopOrdersPolling);
+    if(specialsTab) specialsTab.addEventListener('click', stopOrdersPolling);
+    if(tab) tab.addEventListener('click', stopOrdersPolling);
     if(tab) tab.addEventListener('click',()=>{ setActive(tab); menuHeader.style.display='none'; statsSection.style.display='none'; menuSection.style.display='none'; categoriesSection.style.display=''; specialsSection.style.display='none'; loadCategories(); });
     if(addCatBtn) addCatBtn.addEventListener('click', async()=>{ const name=(newCatInput?.value||'').trim(); if(!name) return; addCatBtn.disabled=true; const text=addCatBtn.textContent; addCatBtn.textContent='Adding...'; const r=await catApi.create(name); addCatBtn.disabled=false; addCatBtn.textContent=text; if(!r?.success){ alert(r?.message||'Failed to add'); return; } newCatInput.value=''; loadCategories(); });
   });

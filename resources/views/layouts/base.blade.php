@@ -11,6 +11,10 @@
   </head>
   <body>
     @yield('content')
+    <!-- WebSockets (Laravel Echo using Pusher protocol) -->
+    <script src="https://cdn.jsdelivr.net/npm/pusher-js@8.4.0/dist/web/pusher.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.3/dist/echo.iife.js"></script>
+    <script src="{{ asset('js/echo.js') }}"></script>
     <script src="{{ asset('js/welcome.js') }}"></script>
   </body>
 </html>

@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\MenuItemController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\OrderController;
+use App\Events\OrderPaidUpdated;
 use Illuminate\Support\Facades\Route;
 
 // Main view
@@ -23,4 +25,14 @@ Route::prefix('categories')->group(function () {
     Route::post('/', [CategoryController::class, 'store'])->name('categories.store');
     Route::post('/{category}', [CategoryController::class, 'update'])->name('categories.update');
     Route::delete('/{category}', [CategoryController::class, 'destroy'])->name('categories.destroy');
+});
+
+// Orders (read-only for UI list)
+Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
+
+// Dev-only: test websocket broadcast
+Route::get('/broadcast-test', function () {
+    $id = random_int(1000, 9999);
+    event(new OrderPaidUpdated($id));
+    return ['ok' => true, 'order_id' => $id];
 });
