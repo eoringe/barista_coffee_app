@@ -25,11 +25,18 @@ The dashboard focuses on **speed, ease of use, and live updates** to support a b
 ---
 
 ## 📷 Screenshots
+<img width="1877" height="905" alt="image" src="https://github.com/user-attachments/assets/8c000bea-4fc4-4419-867e-391134154791" />
+<img width="1888" height="902" alt="image" src="https://github.com/user-attachments/assets/14e867ca-341f-4086-90c6-24e1c9aacd8d" />
+<img width="1875" height="902" alt="image" src="https://github.com/user-attachments/assets/fab34c21-4482-43f5-bca9-db57214e3484" />
+<img width="1880" height="895" alt="image" src="https://github.com/user-attachments/assets/1bd4b3cf-a0fe-456f-8b6b-23fecbea3d08" />
+<img width="1885" height="899" alt="image" src="https://github.com/user-attachments/assets/bb94510b-2cc2-4585-b61c-4d7c69add177" />
+<img width="1882" height="908" alt="image" src="https://github.com/user-attachments/assets/01e772fe-f31f-4aa1-b195-acef7f9cb94a" />
 
-> Screenshots will be included below once added.  
-*(You can attach UI screenshots manually here)*
 
----
+
+
+
+
 
 ## 🚀 Technologies Used
 
@@ -40,26 +47,3 @@ The dashboard focuses on **speed, ease of use, and live updates** to support a b
 
 ---
 
-## 🛠 Installation
-
-```bash
-# Clone repository
-git clone https://github.com/yourusername/barista-dashboard.git
-
-cd barista-dashboard
-
-# Install dependencies
-composer install
-npm install
-
-# Environment setup
-cp .env.example .env
-php artisan key:generate
-
-# Configure your .env database credentials
-
-# Run migrations
-php artisan migrate
-
-# Serve the project
-php artisan serve
