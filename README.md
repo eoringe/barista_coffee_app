@@ -1,4 +1,4 @@
-<p align="center"><a href="#" target="_blank"><img src="YOUR_PROJECT_LOGO_URL_HERE" width="200" alt="Barista Dashboard Logo"></a></p>
+
 
 <p align="center">
 <a href="#"><img src="https://img.shields.io/badge/status-active-success" alt="Project Status"></a>
