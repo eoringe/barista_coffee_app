@@ -4,7 +4,7 @@
   @include('partials.loading_indicator')
   <div class="container">
     @include('partials.sidebar')
-    <main class="flex" style="flex-direction:column; gap:24px">
+    <main class="main flex" style="flex-direction:column; gap:24px">
       @include('partials.menu_header')
       @include('partials.stats')
       @include('partials.menu_grid')
