@@ -12,7 +12,7 @@
 The **Barista Dashboard** is the **administrative web interface** designed to complement the customer-facing **Café Mobile Application**.  
 While customers place orders and explore the café menu on the mobile app, baristas and café staff use this dashboard to manage operations seamlessly.
 
-It provides tools to maintain the drinks menu, highlight daily specials, and track customer orders in real-time through automatic AJAX refreshes — enabling fast and efficient service.
+It provides tools to maintain the drinks menu, highlight daily specials, and track customer orders in real-time through automatic AJAX refreshes, enabling fast and efficient service.
 
 The dashboard focuses on:
 - **Operational efficiency**
