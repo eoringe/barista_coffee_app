@@ -10,6 +10,7 @@
       @include('partials.menu_grid')
       @include('partials.specials')
       @include('partials.categories')
+      @include('partials.orders')
     </main>
   </div>
   @include('partials.modal')

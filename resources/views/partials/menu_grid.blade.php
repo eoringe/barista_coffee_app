@@ -1,7 +1,7 @@
 <section class="card p-4" id="menuSection">
   <div class="flex items-center justify-between" style="margin-bottom:12px">
     <h2 style="margin:0;font-weight:600">Menu Items</h2>
-    <div class="text-muted">Grid view</div>
+    <div></div>
   </div>
   <div id="menuGrid" class="grid"></div>
 

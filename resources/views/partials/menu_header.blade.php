@@ -6,6 +6,10 @@
     </div>
     <div class="flex items-center gap-2">
       <input class="input" placeholder="Search..." />
+      <div class="view-toggle" role="group" aria-label="View toggle">
+        <button id="viewGridBtn" class="seg-btn active" title="Grid view">▦</button>
+        <button id="viewListBtn" class="seg-btn" title="List view">≣</button>
+      </div>
       <button id="openCreateModalBtn" class="btn">Add Item</button>
     </div>
   </div>

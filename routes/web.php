@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 // Main view
 Route::get('/', function () {
-    return view('welcome');
+    return view('welcome_refactored');
 })->name('home');
 
 // Menu Items Routes
