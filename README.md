@@ -16,23 +16,22 @@ The dashboard focuses on **speed, ease of use, and live updates** to support a b
 ### Key Capabilities
 
 - ➕ Add new drinks and food menu items
-- <img width="1888" height="902" alt="image" src="https://github.com/user-attachments/assets/ac3015dc-1183-405d-9b8c-384c6d44eb06" />
+  <img width="1888" height="902" alt="image" src="https://github.com/user-attachments/assets/ac3015dc-1183-405d-9b8c-384c6d44eb06" />
 
 - ✏️ Edit existing menu items
-- <img width="1875" height="902" alt="image" src="https://github.com/user-attachments/assets/4e92b00c-b738-4adb-8c2f-98b02babb95f" />
+ <img width="1875" height="902" alt="image" src="https://github.com/user-attachments/assets/4e92b00c-b738-4adb-8c2f-98b02babb95f" />
 
 - 📋 View all menu items in a clean UI
-- <img width="1877" height="905" alt="image" src="https://github.com/user-attachments/assets/d9b1920e-fec4-4439-abe9-7f3b188514d9" />
+  <img width="1877" height="905" alt="image" src="https://github.com/user-attachments/assets/d9b1920e-fec4-4439-abe9-7f3b188514d9" />
 
 - ⭐ Add **Today’s Specials** with special discount pricing
-- <img width="1880" height="895" alt="image" src="https://github.com/user-attachments/assets/19ce93e5-23a8-4c69-823b-d0212fb93e45" />
+  <img width="1880" height="895" alt="image" src="https://github.com/user-attachments/assets/19ce93e5-23a8-4c69-823b-d0212fb93e45" />
 
 - 🧾 View a **live orders queue** that automatically updates without refreshing the page
-- <img width="1882" height="908" alt="image" src="https://github.com/user-attachments/assets/705de0c0-4bb2-42f2-8e50-0bf30048fec4" />
+  <img width="1882" height="908" alt="image" src="https://github.com/user-attachments/assets/705de0c0-4bb2-42f2-8e50-0bf30048fec4" />
 
 - 🥤 Browse drinks by categories (e.g., Coffee, Tea, Smoothies, etc.)
-- <img width="1885" height="899" alt="image" src="https://github.com/user-attachments/assets/c25fefbd-b640-4c8b-9b1b-407c2fb1a8d9" />
-
+  <img width="1885" height="899" alt="image" src="https://github.com/user-attachments/assets/c25fefbd-b640-4c8b-9b1b-407c2fb1a8d9" />
 
 ## 🚀 Technologies Used
 
@@ -41,5 +40,4 @@ The dashboard focuses on **speed, ease of use, and live updates** to support a b
 - JavaScript + AJAX for live updates
 - MySQL Database
 
----
 
