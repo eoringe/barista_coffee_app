@@ -197,6 +197,7 @@
     <aside class="sidebar">
         <h2 style="font-weight:700;margin:0 0 16px;font-size:18px">Barista Admin</h2>
         <a id="tabMenu" class="active">Menu</a>
+        <a id="tabSpecials">Today's Specials</a>
         <a id="tabCategories">Categories</a>
         <a style="opacity:.5;cursor:not-allowed;">Orders</a>
         <a style="opacity:.5;cursor:not-allowed;">Settings</a>
@@ -376,7 +377,7 @@
      const grid = $('#menuGrid');
      const tpl = $('#menuCardTemplate');
      if (!grid || !tpl) return;
-    showLoading();
+     showLoading();
      try {
        const data = await api.list();
        const items = Array.isArray(data?.data) ? data.data : [];
@@ -481,6 +482,7 @@
        $('#double_price').value = item.double_price ?? '';
        $('#portion_available').value = item.portion_available ?? '';
        $('#available').checked = !!item.available;
+       $('#special').checked = !!item.special;
      } else {
        title.textContent = 'Add Item';
      }
@@ -540,6 +542,7 @@
        single_price: $('#single_price').value,
        double_price: $('#double_price').value,
        available: $('#available').checked ? '1' : '0',  // Convert boolean to 1/0 for Laravel
+       special: $('#special').checked ? '1' : '0',  // Convert boolean to 1/0 for Laravel
        portion_available: $('#portion_available').value,
      };
      console.log('Form payload:', payload);
@@ -610,6 +613,93 @@
     }
   }
 
+  async function loadSpecials() {
+    const grid = $('#specialsGrid');
+    const tpl = $('#menuCardTemplate');
+    if (!grid || !tpl) return;
+    showLoading();
+    try {
+      const response = await fetch('/menu-items?special=1', {
+        headers: {
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error('Failed to load specials');
+      
+      grid.innerHTML = '';
+      const items = data.data;
+      
+      if (items.length === 0) {
+        grid.innerHTML = '<p class="text-sm text-gray-500">No specials available.</p>';
+        return;
+      }
+      
+      items.forEach(item => {
+        const node = tpl.content.firstElementChild.cloneNode(true);
+        const img = node.querySelector('[data-img]');
+        // Prefer backend-provided image_url; fallback to /storage/{image_path}
+        const fallbackPath = item.image_path ? `/storage/${String(item.image_path).replace(/^\+|^\/\/+/, '')}` : null;
+        const imgUrlRaw = item.image_url || fallbackPath;
+        // Normalize host to http://127.0.0.1:8000 when a localhost/127 URL is provided
+        let imgUrl = imgUrlRaw;
+        try {
+          if (imgUrlRaw) {
+            const u = new URL(imgUrlRaw, window.location.origin);
+            if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+              u.protocol = 'http:';
+              u.host = '127.0.0.1:8000';
+              imgUrl = u.toString();
+            }
+          }
+        } catch (e) {
+          // keep original relative path
+        }
+        console.log('[Specials Image Debug] Item:', {
+          id: item.id,
+          coffee_title: item.coffee_title,
+          image_url_field: item.image_url,
+          image_path_field: item.image_path,
+          computed_fallback: fallbackPath,
+          final_url_used: imgUrl,
+        });
+        if (imgUrl) {
+          img.src = imgUrl;
+          img.classList.remove('hidden');
+          img.onerror = () => {
+            console.error(`Failed to load image: ${imgUrl}`);
+            img.classList.add('hidden');
+          };
+        }
+        node.querySelector('[data-title]').textContent = item.coffee_title;
+        node.querySelector('[data-category]').textContent = item.category?.name || 'Uncategorized';
+        node.querySelector('[data-price]').textContent = formatPrice(item.single_price, item.double_price);
+        node.querySelector('[data-availability]').textContent = `${item.available ? 'Available' : 'Unavailable'} • ${item.portion_available} portions`;
+        node.querySelector('[data-edit]').addEventListener('click', () => openModal('edit', item));
+        node.querySelector('[data-delete]').addEventListener('click', async () => {
+          if (!confirm('Delete this item?')) return;
+          await fetch(`/menu-items/${item.id}`, {
+            method: 'DELETE',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+              'Accept': 'application/json'
+            }
+          });
+          loadMenu();
+          loadSpecials();
+        });
+        grid.appendChild(node);
+      });
+    } catch (e) {
+      console.error('Error loading specials:', e);
+      grid.innerHTML = '<p class="text-sm text-red-500">Failed to load specials.</p>';
+    } finally {
+      hideLoading();
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
      loadMenu();
      const openBtn = document.getElementById('openCreateModalBtn');
@@ -624,15 +714,17 @@
     // Categories tab
     const tabMenu = document.getElementById('tabMenu');
     const tab = document.getElementById('tabCategories');
+    const specialsTab = document.getElementById('tabSpecials');
     const menuHeader = document.getElementById('menuHeader');
     const statsSection = document.getElementById('statsSection');
     const menuSection = document.getElementById('menuSection');
     const categoriesSection = document.getElementById('categoriesSection');
+    const specialsSection = document.getElementById('specialsSection');
     const addCatBtn = document.getElementById('addCategoryBtn');
     const newCatInput = document.getElementById('newCategoryName');
 
     function setActive(tabEl) {
-      [tabMenu, tab].forEach(el => { if (!el) return; el.classList.remove('active'); });
+      [tabMenu, tab, specialsTab].forEach(el => { if (!el) return; el.classList.remove('active'); });
       if (tabEl) tabEl.classList.add('active');
     }
 
@@ -643,7 +735,19 @@
       statsSection.style.display = '';
       menuSection.style.display = '';
       categoriesSection.style.display = 'none';
+      specialsSection.style.display = 'none';
       loadMenu();
+    });
+
+    if (specialsTab) specialsTab.addEventListener('click', () => {
+      // show specials
+      setActive(specialsTab);
+      menuHeader.style.display = 'none';
+      statsSection.style.display = 'none';
+      menuSection.style.display = 'none';
+      categoriesSection.style.display = 'none';
+      specialsSection.style.display = '';
+      loadSpecials();
     });
 
     if (tab) tab.addEventListener('click', () => {
@@ -653,6 +757,7 @@
       statsSection.style.display = 'none';
       menuSection.style.display = 'none';
       categoriesSection.style.display = '';
+      specialsSection.style.display = 'none';
       loadCategories();
     });
     if (addCatBtn) addCatBtn.addEventListener('click', async () => {
@@ -750,6 +855,15 @@
         </section>
 
         <!-- Categories Panel -->
+        <section class="card p-4" id="specialsSection" style="display:none">
+            <div class="flex items-center justify-between" style="margin-bottom:16px">
+                <h2 style="margin:0;font-weight:600">Today's Specials</h2>
+            </div>
+            <div id="specialsGrid" class="grid">
+                <!-- Specials will be loaded here -->
+            </div>
+        </section>
+        
         <section class="card p-4" id="categoriesSection" style="display:none">
             <div class="flex items-center justify-between" style="margin-bottom:16px">
                 <h2 style="margin:0;font-weight:600">Categories</h2>
@@ -809,9 +923,15 @@
                     <input id="portion_available" name="portion_available" type="number" min="0" required class="input">
                 </div>
                 <label class="flex items-center gap-2" style="margin-top:28px;font-size:14px">
-                    <input id="available" name="available" type="checkbox" checked>
-                    Available
+                    <input type="checkbox" id="available" name="available" class="form-checkbox h-4 w-4 text-primary-600">
+                    <label for="available" class="text-sm font-medium">Available</label>
                 </label>
+            </div>
+            <div class="flex flex-col gap-4">
+              <label class="flex items-center gap-2" style="font-size:14px">
+                <input type="checkbox" id="special" name="special" class="form-checkbox h-4 w-4 text-yellow-500">
+                <label for="special" class="text-sm font-medium">Today's Special</label>
+              </label>
             </div>
             <div>
                 <label style="font-size:14px;margin-bottom:4px;display:block">Image</label>

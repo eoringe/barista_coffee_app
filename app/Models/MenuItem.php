@@ -16,10 +16,12 @@ class MenuItem extends Model
         'portion_available',
         'image_path',
         'category_id',
+        'special',
     ];
 
     protected $casts = [
         'available' => 'boolean',
+        'special' => 'boolean',
         'single_price' => 'integer',
         'double_price' => 'integer',
         'portion_available' => 'integer',

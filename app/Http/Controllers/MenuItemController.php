@@ -15,9 +15,16 @@ class MenuItemController extends Controller
     /**
      * Display a listing of the menu items.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $items = MenuItem::with('category')->orderByDesc('created_at')->get();
+        $query = MenuItem::with('category');
+        
+        // Filter by special flag if provided
+        if ($request->has('special')) {
+            $query->where('special', filter_var($request->special, FILTER_VALIDATE_BOOLEAN));
+        }
+        
+        $items = $query->orderByDesc('created_at')->get();
 
         return response()->json([
             'success' => true,
@@ -38,6 +45,7 @@ class MenuItemController extends Controller
             'single_price' => 'required|integer|min:0',
             'double_price' => 'required|integer|min:0',
             'available' => 'boolean',
+            'special' => 'boolean',
             'portion_available' => 'required|integer|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
@@ -63,6 +71,7 @@ class MenuItemController extends Controller
                 'single_price' => $validated['single_price'],
                 'double_price' => $validated['double_price'],
                 'available' => $validated['available'] ?? true,
+                'special' => $validated['special'] ?? false,
                 'portion_available' => $validated['portion_available'],
                 'image_path' => $imagePath,
                 'category_id' => $category->id,
@@ -109,6 +118,7 @@ class MenuItemController extends Controller
                 'single_price' => 'required|integer|min:0',
                 'double_price' => 'required|integer|min:0',
                 'available' => 'boolean',
+                'special' => 'boolean',
                 'portion_available' => 'required|integer|min:0',
                 'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             ]);
@@ -151,6 +161,7 @@ class MenuItemController extends Controller
                 'single_price' => (int) $validated['single_price'],
                 'double_price' => (int) $validated['double_price'],
                 'available' => isset($validated['available']) ? (bool) $validated['available'] : true,
+                'special' => isset($validated['special']) ? (bool) $validated['special'] : false,
                 'portion_available' => (int) $validated['portion_available'],
                 'image_path' => $imagePath,
             ];
