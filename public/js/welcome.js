@@ -276,7 +276,7 @@
       }
     }catch(e){ console.warn('[Echo] Subscription failed:', e); }
 
-    function setActive(tabEl){ [tabMenu,tab,specialsTab].forEach(el=>{ if(!el) return; el.classList.remove('active'); }); if(tabEl) tabEl.classList.add('active'); }
+    function setActive(tabEl){ [tabMenu,tab,specialsTab,ordersTab].forEach(el=>{ if(!el) return; el.classList.remove('active'); }); if(tabEl) tabEl.classList.add('active'); }
 
     if(tabMenu) tabMenu.addEventListener('click',()=>{ setActive(tabMenu); menuHeader.style.display=''; statsSection.style.display=''; menuSection.style.display=''; categoriesSection.style.display='none'; specialsSection.style.display='none'; if(ordersSection) ordersSection.style.display='none'; loadMenu(); });
     if(specialsTab) specialsTab.addEventListener('click',()=>{ setActive(specialsTab); menuHeader.style.display='none'; statsSection.style.display='none'; menuSection.style.display='none'; categoriesSection.style.display='none'; if(ordersSection) ordersSection.style.display='none'; specialsSection.style.display=''; showLoadingIndicator(); loadSpecials(); });
@@ -297,7 +297,7 @@
     if(tabMenu) tabMenu.addEventListener('click', stopOrdersPolling);
     if(specialsTab) specialsTab.addEventListener('click', stopOrdersPolling);
     if(tab) tab.addEventListener('click', stopOrdersPolling);
-    if(tab) tab.addEventListener('click',()=>{ setActive(tab); menuHeader.style.display='none'; statsSection.style.display='none'; menuSection.style.display='none'; categoriesSection.style.display=''; specialsSection.style.display='none'; loadCategories(); });
+    if(tab) tab.addEventListener('click',()=>{ setActive(tab); menuHeader.style.display='none'; statsSection.style.display='none'; menuSection.style.display='none'; categoriesSection.style.display=''; specialsSection.style.display='none'; if(ordersSection) ordersSection.style.display='none'; loadCategories(); });
     if(addCatBtn) addCatBtn.addEventListener('click', async()=>{ const name=(newCatInput?.value||'').trim(); if(!name) return; addCatBtn.disabled=true; const text=addCatBtn.textContent; addCatBtn.textContent='Adding...'; const r=await catApi.create(name); addCatBtn.disabled=false; addCatBtn.textContent=text; if(!r?.success){ alert(r?.message||'Failed to add'); return; } newCatInput.value=''; loadCategories(); });
   });
 })();
