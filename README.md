@@ -44,4 +44,4 @@ The dashboard focuses on:
 - Laravel (Backend framework)
 - Blade Templates / HTML / CSS
 - JavaScript + AJAX for live updates
-- MySQL Database
+- PostgreSQL Database
