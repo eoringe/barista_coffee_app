@@ -1,9 +1,19 @@
-<section class="card p-4" id="menuSection">
-  <div class="flex items-center justify-between" style="margin-bottom:12px">
+<section class="card p-4" id="menuSection" style="display: flex; flex-direction: column; height: calc(100vh - 200px);">
+  <div class="flex items-center justify-between" style="margin-bottom: 16px; flex-shrink: 0;">
     <h2 style="margin:0;font-weight:600">Menu Items</h2>
-    <div></div>
+    <div class="flex items-center gap-2">
+      <select id="categoryFilter" class="input" style="min-width: 150px;">
+        <option value="">All Categories</option>
+        <!-- Categories will be populated by JavaScript -->
+      </select>
+      <input id="menuSearch" class="input" placeholder="Search..." style="min-width: 200px;" />
+    </div>
   </div>
-  <div id="menuGrid" class="grid"></div>
+  <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; width: 100%;">
+    <div id="menuGrid" class="menu-items-grid" style="flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 8px; width: 100%; box-sizing: border-box;">
+      <!-- Menu items will be inserted here by JavaScript -->
+    </div>
+  </div>
 
   <template id="menuCardTemplate">
     <div class="card">
